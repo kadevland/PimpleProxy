@@ -2,102 +2,144 @@
 
 namespace Kadevland\PimpleProxy;
 
+/**
+ * Class PimpleSimpleProxy
+ * @package Kadevland\PimpleProxy
+ * @author ...
+ */
+class PimpleSimpleProxy
+{
+    /**
+     * @var [type] $container [desc]
+     */
+    protected $container;
 
+    /**
+     * @var string $proxyName [desc]
+     */
+    protected $proxyName = '';
 
-class PimpleSimpleProxy {
+    /**
+     * @var string $proxyNamespace [desc]
+     */
+    protected $proxyNamespace = '';
 
+    /**
+     * @var mixed|string $prefixClass [desc]
+     */
+    protected $prefixClass = '';
 
-	protected $container;
-	
-	protected $proxyName='';
+    /**
+     * @var mixed|string $suffixClass [desc]
+     */
+    protected $suffixClass = '';
 
-	protected $proxyNamespace='';
+    /**
+     * PimpleSimpleProxy constructor.
+     * @param [type] $container [desc]
+     * @param [type] $proxyName [desc]
+     * @param string $proxyNamespace [desc]
+     * @param array $option [desc]
+     */
+    public function __construct($container, $proxyName, $proxyNamespace = '', $option = array())
+    {
+        $this->container = $container;
+        $this->proxyName = $proxyName;
 
-	protected $prefixClass='';
+        if(!empty($proxyNamespace)) {
+            $this->proxyNamespace = '\\'.trim($proxyNamespace, '\\');
+        }
 
-	protected $suffixClass='';
+        if(isset($option['prefix'])) {
+            $this->prefixClass = $option['prefix'];
+        }
 
+        if(isset($option['suffix'])) {
+            $this->suffixClass = $option['suffix'];
+        }
+    }
 
-	public function __construct($container,$proxyName,$proxyNamespace='',$option=array()){
-		
-		$this->container=$container;
-		
-		
-		$this->proxyName=$proxyName;
-		
-	
-		
-		if(!empty($proxyNamespace)){
-		$this->proxyNamespace='\\'.trim($proxyNamespace,'\\');
-		
-		}
+    /**
+     * [Description]
+     * @param $class
+     * @return mixed
+     */
+    public  function __get($class)
+    {
+        $classNameContainer = $this->getNameContainer($class);
 
-		if(isset($option['prefix'])){
-			$this->prefixClass=$option['prefix'];
+        if(!isset($this->container[$classNameContainer])) {
+            $this->attachClass($classNameContainer, $class);
+        }
 
-		}
-		if(isset($option['suffix'])){
+        return $this->container[$classNameContainer];
+    }
 
-			$this->suffixClass=$option['suffix'];
-		}
-	}
+    /**
+     * [Description]
+     * @param $class
+     * @return string
+     */
+    protected function getClassName($class)
+    {
+        return $this->concatCamelCase(array($this->prefixClass, $class, $this->suffixClass));
+    }
 
+    /**
+     * [Description]
+     * @param $class
+     * @return string
+     */
+    protected function getNameContainer($class)
+    {
+        return $this->concatCamelCase(array($this->proxyName, $class));
+    }
 
-	public  function __get($class){
+    /**
+     * [Description]
+     * @param $nameContainer
+     * @param $class
+     */
+    protected function attachClass($nameContainer, $class)
+    {
+        $classPath = $this->getClassPath($class);
 
-		$classNameContainer=$this->getNameContainer($class);
+        $this->container[$nameContainer] = function($container) use($classPath) {
+            return new $classPath($container);
+        };
+    }
 
-		if(!isset($this->container[$classNameContainer])){
-			
-			$this->attachClass($classNameContainer,$class);
+    /**
+     * [Description]
+     * @param $class
+     * @return string
+     */
+    protected function getClassPath($class)
+    {
+        return	$this->proxyNamespace.'\\'.$this->getClassName($class);
+    }
 
-		}
+    /**
+     * [Description]
+     * @param array $array
+     * @return string
+     */
+    protected function concatCamelCase($array = array())
+    {
+        $array = array_map(function($val) {
+            return ucfirst(trim($val)) ;
+        }, $array);
 
-		return $this->container[$classNameContainer];
+        return implode('',$array);
+    }
 
-	}
-
-	protected function getClassName($class){
-
-		return $this->concatCamelCase(array($this->prefixClass,$class,$this->suffixClass));
-
-	}
-
-	protected function getNameContainer($class){
-
-		return $this->concatCamelCase(array($this->proxyName,$class));
-	}
-	
-	protected function attachClass($nameContainer,$class){
-		$classPath=$this->getClassPath($class);		
-		
-		$this->container[$nameContainer]=function($container) use($classPath){
-				return new $classPath($container);
-			};		
-	}
-	
-	protected function getClassPath($class){
-		
-		return	$this->proxyNamespace.'\\'.(string)$this->getClassName($class);
-
-	}
-
-	protected function concatCamelCase($array=array()){
-
-		$array=array_map(function($val){return ucfirst(trim($val)) ;},$array);
-		
-		return implode('',$array);		
-
-	}
-
-	public function register(){
-		if(!empty($this->proxyName)){
-			$this->container[$this->proxyName]=$this;
-		}
-	}
-
-
-
-
-
+    /**
+     * [Description]
+     */
+    public function register()
+    {
+        if(!empty($this->proxyName)) {
+            $this->container[$this->proxyName] = $this;
+        }
+    }
 }
